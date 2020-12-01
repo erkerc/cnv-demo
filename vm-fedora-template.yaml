@@ -1,0 +1,188 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  app: ngnix-fedora
+metadata:
+  annotations:
+    name.os.template.kubevirt.io/fedora32: Fedora 31 or higher
+  name: ngnix-fedora
+objects:
+  - apiVersion: kubevirt.io/v1alpha3
+    kind: VirtualMachine
+    metadata:
+      annotations:
+        name.os.template.kubevirt.io/fedora32: Fedora 31 or higher
+      labels:
+        app: ${VM_NAME}
+        flavor.template.kubevirt.io/tiny: "true"
+        os.template.kubevirt.io/fedora32: "true"
+        vm.kubevirt.io/template: fedora33
+        vm.kubevirt.io/template.namespace: ${NAMESPACE}
+        vm.kubevirt.io/template.revision: "1"
+        vm.kubevirt.io/template.version: v0.12.3
+        workload.template.kubevirt.io/server: "true"
+      name: ${VM_NAME}
+      namespace: ${NAMESPACE}
+    spec:
+      dataVolumeTemplates:
+      - apiVersion: cdi.kubevirt.io/v1alpha1
+        kind: DataVolume
+        metadata:
+          name: ${VM_NAME}-rootdisk
+        spec:
+          pvc:
+            accessModes:
+            - ReadWriteMany
+            resources:
+              requests:
+                storage: 15Gi
+            storageClassName: ocs-storagecluster-ceph-rbd
+            volumeMode: Block
+          source:
+            pvc:
+              name: fedora33-rootdisk-5p3y1
+              namespace: ${NAMESPACE}
+      running: true
+      template:
+        metadata:
+          labels:
+            flavor.template.kubevirt.io/tiny: "true"
+            kubevirt.io/domain: ${VM_NAME}
+            kubevirt.io/size: tiny
+            os.template.kubevirt.io/fedora32: "true"
+            vm.kubevirt.io/name: ${VM_NAME}
+            workload.template.kubevirt.io/server: "true"
+        spec:
+          domain:
+            cpu:
+              cores: ${{COMPUTE_CORES}}
+              sockets: ${{COMPUTE_SOCKETS}}
+              threads: 1
+            devices:
+              disks:
+              - disk:
+                  bus: virtio
+                name: cloudinitdisk
+              - bootOrder: 1
+                disk:
+                  bus: virtio
+                name: rootdisk
+              interfaces:
+              - masquerade: {}
+                model: virtio
+                name: nic-0
+              - bridge: {}
+                model: virtio
+                name: nic-1
+              networkInterfaceMultiqueue: true
+              rng: {}
+            machine:
+              type: pc-q35-rhel8.2.0
+            resources:
+              requests:
+                memory: 1Gi
+          evictionStrategy: LiveMigrate
+          hostname: ${VM_NAME}
+          networks:
+          - name: nic-0
+            pod: {}
+          - multus:
+              networkName: ${VLAN}
+            name: nic-1
+          terminationGracePeriodSeconds: 180
+          volumes:
+          - cloudInitNoCloud:
+              networkData: |
+                network:
+                  version: 1
+                  config:
+                  - type: physical
+                    name: eth1
+                    subnets:
+                    - type: static
+                      address: ${IP_CIDR}
+                      gateway: ${DEFAULT_GATEWAY}
+              userData: |
+                #cloud-config
+                user: fedora
+                password: ${PASSWORD}
+                chpasswd:
+                  expire: false
+                packages:
+                  - qemu-guest-agent
+                  - nginx
+                runcmd:
+                  - systemctl enable --now qemu-guest-agent
+                  - systemctl enable --now nginx
+            name: cloudinitdisk
+          - dataVolume:
+              name: ${VM_NAME}-rootdisk
+            name: rootdisk
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${VM_NAME}
+      namespace: ${NAMESPACE}
+    spec:
+      ports:
+      - port: 80
+        protocol: TCP
+        targetPort: 80
+      selector:
+        kubevirt.io/domain: ${VM_NAME}
+        vm.kubevirt.io/name: ${VM_NAME}
+      sessionAffinity: None
+      type: ClusterIP
+  - apiVersion: v1
+    kind: Route
+    metadata:
+      name: ${VM_NAME}
+      namespace: ${NAMESPACE}
+    spec:
+      port:
+        targetPort: 80
+      to:
+        kind: Service
+        name: ${VM_NAME}
+        weight: 100
+      wildcardPolicy: None
+parameters:
+- description: Name of the Virtual Machine to deployed
+  displayName: Virtual Machine Name
+  name: VM_NAME
+  required: true
+- description: User Password 
+  from: '[a-zA-Z0-9]{8}'
+  generate: expression
+  name: PASSWORD
+  required: true
+- description: Static IP of Virtual Machine e.g. 192.168.192.20/24
+  displayName: Virtual Machine IP
+  name: IP_CIDR
+  required: true
+- description: Number of Virtual Cores
+  displayName: Number of Virtual Cores
+  name: COMPUTE_CORES
+  value: '1'
+  required: true
+- description: Number of Virtual Sockets
+  displayName: Number of Virtual Sockets
+  name: COMPUTE_SOCKETS
+  value: '1'
+  required: true
+- description: Default Gateway IP
+  displayName: Default Gateway IP
+  name: DEFAULT_GATEWAY
+  value: '192.168.192.2'
+  required: true
+- description: Virtual Network Name
+  displayName: Virtual Network Name
+  name: VLAN
+  value: 'vlan302'
+  required: true
+- description: Namespace
+  displayName: Namespace
+  name: NAMESPACE
+  value: 'cnv-demo'
+  required: true

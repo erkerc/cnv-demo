@@ -1,0 +1,106 @@
+apiVersion: kubevirt.io/v1alpha3
+kind: VirtualMachine
+metadata:
+  annotations:
+    name.os.template.kubevirt.io/fedora32: Fedora 31 or higher
+  labels:
+    app: fedora3
+    flavor.template.kubevirt.io/tiny: "true"
+    os.template.kubevirt.io/fedora32: "true"
+    vm.kubevirt.io/template: fedora33
+    vm.kubevirt.io/template.namespace: cnv-demo
+    vm.kubevirt.io/template.revision: "1"
+    vm.kubevirt.io/template.version: v0.12.3
+    workload.template.kubevirt.io/server: "true"
+  name: fedora3
+  namespace: cnv-demo
+spec:
+  dataVolumeTemplates:
+  - apiVersion: cdi.kubevirt.io/v1alpha1
+    kind: DataVolume
+    metadata:
+      name: fedora3-rootdisk
+    spec:
+      pvc:
+        accessModes:
+        - ReadWriteMany
+        resources:
+          requests:
+            storage: 15Gi
+        storageClassName: ocs-storagecluster-ceph-rbd
+        volumeMode: Block
+      source:
+        pvc:
+          name: fedora33-rootdisk-5p3y1
+          namespace: cnv-demo
+  running: true
+  template:
+    metadata:
+      labels:
+        flavor.template.kubevirt.io/tiny: "true"
+        kubevirt.io/domain: fedora3
+        kubevirt.io/size: tiny
+        os.template.kubevirt.io/fedora32: "true"
+        vm.kubevirt.io/name: fedora3
+        workload.template.kubevirt.io/server: "true"
+    spec:
+      domain:
+        cpu:
+          cores: 1
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: cloudinitdisk
+          - bootOrder: 1
+            disk:
+              bus: virtio
+            name: rootdisk
+          interfaces:
+          - masquerade: {}
+            model: virtio
+            name: nic-0
+          - bridge: {}
+            model: virtio
+            name: nic-1
+          networkInterfaceMultiqueue: true
+          rng: {}
+        machine:
+          type: pc-q35-rhel8.2.0
+        resources:
+          requests:
+            memory: 1Gi
+      evictionStrategy: LiveMigrate
+      hostname: fedora3
+      networks:
+      - name: nic-0
+        pod: {}
+      - multus:
+          networkName: vlan302
+        name: nic-1
+      terminationGracePeriodSeconds: 180
+      volumes:
+      - cloudInitNoCloud:
+          networkData: |
+            network:
+              version: 1
+              config:
+              - type: physical
+                name: eth1
+                subnets:
+                - type: static
+                  address: 192.168.192.21/24
+                  gateway: 192.168.192.2
+          userData: |
+            #cloud-config
+            user: fedora
+            password: fedora
+            chpasswd:
+              expire: false
+        name: cloudinitdisk
+      - dataVolume:
+          name: fedora3-rootdisk
+        name: rootdisk
+
