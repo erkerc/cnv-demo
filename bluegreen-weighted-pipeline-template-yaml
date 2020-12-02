@@ -1,0 +1,76 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  app: bluegreen-vm-pipeline
+metadata:
+  annotations:
+    name.os.template.kubevirt.io/fedora32: Fedora 31 or higher
+  name: bluegreen-vm-pipeline
+objects:
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      annotations:
+        openshift.io/generated-by: OpenShiftNewApp
+        pipeline.alpha.openshift.io/uses: '[{"name": "jenkins", "namespace": "", "kind":
+          "DeploymentConfig"}]'
+      labels:
+        app: cicd-pipeline
+        group: cicd
+        name: cicd-pipeline
+        template: cicd
+      name: ${ROUTE_NAME}-bluegreen-pipeline
+    spec:
+      failedBuildsHistoryLimit: 5
+      runPolicy: Serial
+      source:
+        type: None
+      strategy:
+        jenkinsPipelineStrategy:
+          env:
+          - name: COLOR
+            value: yellow
+          jenkinsfile: |-
+            import java.text.SimpleDateFormat;
+            node {
+              // Blue/Green Deployment into Production. 
+              // ------------------------------------
+
+              stage('preamble') {
+                script {
+                  openshift.withCluster() {
+                    openshift.withProject() {
+                      echo "Using project: ${openshift.project()}"
+                    }
+                  }
+                }
+              }
+
+              stage('Switch over to new Version') {
+                input "Switch to New Version?"
+                script {
+                  sh "oc set route-backends ${ROUTE_NAME} ${ROUTE_NAME}-blue=${BLUE_SERVICE_WEIGHT} ${ROUTE_NAME}-green=${GREEN_SERVICE_WEIGHT}"
+                  sh "oc get route ${ROUTE_NAME} > oc_out.txt"
+                  oc_out = readFile('oc_out.txt')
+                  echo "Current route configuration: " + oc_out
+                }
+              }
+            }
+        type: JenkinsPipeline
+      successfulBuildsHistoryLimit: 5
+parameters:
+- description: Name of the Route
+  displayName: Name of the Route
+  name: ROUTE_NAME
+  required: true
+- description: Green Service Weight
+  displayName: Green Service Weight
+  name: GREEN_SERVICE_WEIGHT
+  required: true
+  value: '100'
+- description: Blue Service Weight
+  displayName: Blue Service Weight
+  name: BLUE_SERVICE_WEIGHT
+  required: true
+  value: '0'
+

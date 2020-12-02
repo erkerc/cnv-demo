@@ -1,7 +1,7 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 labels:
-  app: ngnix-fedora
+  app: nginx-fedora
 metadata:
   annotations:
     name.os.template.kubevirt.io/fedora32: Fedora 31 or higher
@@ -16,7 +16,7 @@ objects:
         app: ${VM_NAME}
         flavor.template.kubevirt.io/tiny: "true"
         os.template.kubevirt.io/fedora32: "true"
-        vm.kubevirt.io/template: fedora33
+        vm.kubevirt.io/template: fedora-33
         vm.kubevirt.io/template.namespace: ${NAMESPACE}
         vm.kubevirt.io/template.revision: "1"
         vm.kubevirt.io/template.version: v0.12.3
