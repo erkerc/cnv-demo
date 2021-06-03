@@ -1,11 +1,11 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 labels:
-  app: nginx-fedora
+  app: ngnix-vm
 metadata:
   annotations:
     name.os.template.kubevirt.io/fedora32: Fedora 31 or higher
-  name: ngnix-fedora
+  name: ngnix-vm
 objects:
   - apiVersion: kubevirt.io/v1alpha3
     kind: VirtualMachine
@@ -16,7 +16,7 @@ objects:
         app: ${VM_NAME}
         flavor.template.kubevirt.io/tiny: "true"
         os.template.kubevirt.io/fedora32: "true"
-        vm.kubevirt.io/template: fedora33
+        vm.kubevirt.io/template: fedora-33
         vm.kubevirt.io/template.namespace: ${NAMESPACE}
         vm.kubevirt.io/template.revision: "1"
         vm.kubevirt.io/template.version: v0.12.3
@@ -40,7 +40,7 @@ objects:
             volumeMode: Block
           source:
             pvc:
-              name: fedora33-rootdisk-5p3y1
+              name: fedora-33-rootdisk-5j6im
               namespace: ${NAMESPACE}
       running: true
       template:
@@ -134,19 +134,6 @@ objects:
         vm.kubevirt.io/name: ${VM_NAME}
       sessionAffinity: None
       type: ClusterIP
-  - apiVersion: v1
-    kind: Route
-    metadata:
-      name: ${VM_NAME}
-      namespace: ${NAMESPACE}
-    spec:
-      port:
-        targetPort: 80
-      to:
-        kind: Service
-        name: ${VM_NAME}
-        weight: 100
-      wildcardPolicy: None
 parameters:
 - description: Name of the Virtual Machine to deployed
   displayName: Virtual Machine Name

@@ -1,22 +1,22 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 labels:
-  app: nginx-fedora
+  app: centos-linux
 metadata:
   annotations:
-    name.os.template.kubevirt.io/fedora32: Fedora 31 or higher
-  name: ngnix-fedora
+    name.os.template.kubevirt.io/centos7: CentOS 7 or higher
+  name: centos-linux
 objects:
   - apiVersion: kubevirt.io/v1alpha3
     kind: VirtualMachine
     metadata:
       annotations:
-        name.os.template.kubevirt.io/fedora32: Fedora 31 or higher
+        name.os.template.kubevirt.io/centos7: CentOS 7 or higher
       labels:
         app: ${VM_NAME}
         flavor.template.kubevirt.io/tiny: "true"
-        os.template.kubevirt.io/fedora32: "true"
-        vm.kubevirt.io/template: fedora33
+        os.template.kubevirt.io/centos7: "true"
+        vm.kubevirt.io/template: template-centos
         vm.kubevirt.io/template.namespace: ${NAMESPACE}
         vm.kubevirt.io/template.revision: "1"
         vm.kubevirt.io/template.version: v0.12.3
@@ -40,7 +40,7 @@ objects:
             volumeMode: Block
           source:
             pvc:
-              name: fedora33-rootdisk-5p3y1
+              name: template-centos-rootdisk-c9g7q
               namespace: ${NAMESPACE}
       running: true
       template:
@@ -49,7 +49,7 @@ objects:
             flavor.template.kubevirt.io/tiny: "true"
             kubevirt.io/domain: ${VM_NAME}
             kubevirt.io/size: tiny
-            os.template.kubevirt.io/fedora32: "true"
+            os.template.kubevirt.io/centos7: "true"
             vm.kubevirt.io/name: ${VM_NAME}
             workload.template.kubevirt.io/server: "true"
         spec:
@@ -77,10 +77,10 @@ objects:
               networkInterfaceMultiqueue: true
               rng: {}
             machine:
-              type: pc-q35-rhel8.2.0
+              type: pc-q35-rhel8.3.0
             resources:
               requests:
-                memory: 1Gi
+                memory: 2Gi
           evictionStrategy: LiveMigrate
           hostname: ${VM_NAME}
           networks:
@@ -184,5 +184,5 @@ parameters:
 - description: Namespace
   displayName: Namespace
   name: NAMESPACE
-  value: 'cnv-demo'
+  value: 'erkan-kubeservers'
   required: true
