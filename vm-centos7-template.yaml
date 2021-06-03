@@ -35,7 +35,7 @@ objects:
             - ReadWriteMany
             resources:
               requests:
-                storage: 15Gi
+                storage: 20Gi
             storageClassName: ocs-storagecluster-ceph-rbd
             volumeMode: Block
           source:
@@ -118,35 +118,6 @@ objects:
           - dataVolume:
               name: ${VM_NAME}-rootdisk
             name: rootdisk
-
-  - apiVersion: v1
-    kind: Service
-    metadata:
-      name: ${VM_NAME}
-      namespace: ${NAMESPACE}
-    spec:
-      ports:
-      - port: 80
-        protocol: TCP
-        targetPort: 80
-      selector:
-        kubevirt.io/domain: ${VM_NAME}
-        vm.kubevirt.io/name: ${VM_NAME}
-      sessionAffinity: None
-      type: ClusterIP
-  - apiVersion: v1
-    kind: Route
-    metadata:
-      name: ${VM_NAME}
-      namespace: ${NAMESPACE}
-    spec:
-      port:
-        targetPort: 80
-      to:
-        kind: Service
-        name: ${VM_NAME}
-        weight: 100
-      wildcardPolicy: None
 parameters:
 - description: Name of the Virtual Machine to deployed
   displayName: Virtual Machine Name
